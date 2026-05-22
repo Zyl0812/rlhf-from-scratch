@@ -135,7 +135,13 @@ uv run python instructgpt/ppo.py
 ```bash
 # 把 Qwen2.5-3B-Instruct/ 和 Countdown-Tasks-3to4/ 放到 grpo/ 目录下
 uv run python grpo/train.py
+
+# 单独评估基线 / 某个 checkpoint：
+uv run python grpo/eval.py --model-path ./grpo/Qwen2.5-3B-Instruct/ \
+                           --data-path ./grpo/Countdown-Tasks-3to4/
 ```
+
+> 💡 想在云上跑？参见 [`docs/autodl_guide.md`](docs/autodl_guide.md)：在 AutoDL 上以 ¥50 以内预算完整跑一遍"基线 → GRPO → 训练后评估"。
 
 ### 算法要点
 

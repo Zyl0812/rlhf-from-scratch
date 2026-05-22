@@ -24,6 +24,7 @@ from pathlib import Path
 import numpy as np
 import torch
 from countdown_task import CountdownTasksDataset, reward_function
+from eval import evaluate
 from qwen2_model import Transformer
 from tokenizer import Tokenizer
 from torch.utils.data import DataLoader
@@ -31,46 +32,13 @@ from torch.utils.tensorboard.writer import SummaryWriter
 
 from grpo import rollout, update_policy
 
-
-def evaluate(model, tokenizer, device, dtype):
-    """每隔10个step，使用测试数据集评估一下，看能做对多少题"""
-    test_dataset = CountdownTasksDataset(
-        data_path="Countdown-Tasks-3to4",
-        tokenizer=tokenizer,
-        split="test",
-        test_size=128,  # 128条测试数据
-    )
-    generator = torch.Generator(device=device)
-    # 批次大小减半，我们就可以生成2倍长的轨迹了
-    dataloader = DataLoader(
-        test_dataset,
-        shuffle=False,
-        collate_fn=CountdownTasksDataset.collate_fn,
-        generator=generator,
-        # 批次大小为256，减半
-        batch_size=256 // 2,
-        drop_last=False,
-    )
-    success = []
-    for batch in dataloader:
-        episodes = rollout(
-            model=model,
-            tokenizer=tokenizer,
-            batch=batch,
-            # 最大生成长度为1024，乘以2
-            max_gen_len=1024 * 2,
-            # 评估时，针对每个问题只生成1个回答
-            num_answer_per_question=1,
-            reward_function=reward_function,
-            device=device,
-            dtype=dtype,
-        )
-        success.extend([episode.reward_info["answer_reward"] for episode in episodes])
-    return np.mean(success)
+# 模型与数据集路径：在 AutoDL 上通常放在 /root/autodl-tmp/ 下
+PRETRAINED_MODEL_PATH = Path("./Qwen2.5-3B-Instruct/")
+DATASET_PATH = Path("./Countdown-Tasks-3to4/")
 
 
 def main():
-    pretrained_model_path = Path("./Qwen2.5-3B-Instruct/")
+    pretrained_model_path = PRETRAINED_MODEL_PATH
     device = torch.device("cuda")
     dtype = torch.bfloat16
     torch.set_default_device(device)
@@ -84,10 +52,10 @@ def main():
 
     current_time = datetime.now().strftime(r"%Y%m%d-%H%M%S")
     tb_writer = SummaryWriter(log_dir=f"./logs/{current_time}")
-    tokenizer = Tokenizer("./Qwen2.5-3B-Instruct/tokenizer.json")
+    tokenizer = Tokenizer(str(PRETRAINED_MODEL_PATH / "tokenizer.json"))
 
     train_dataset = CountdownTasksDataset(
-        data_path="./Countdown-Tasks-3to4/",
+        data_path=str(DATASET_PATH),
         tokenizer=tokenizer,
         split="train",
         test_size=128,
@@ -166,7 +134,9 @@ def main():
         )
         # 每隔10步评估一次
         if step % 10 == 0:
-            eval_success_rate = evaluate(model, tokenizer, device, dtype)
+            eval_success_rate = evaluate(
+                model, tokenizer, device, dtype, data_path=str(DATASET_PATH)
+            )
             print(
                 f"\r评估数据集回答正确率: \
                    {eval_success_rate:.2f}"

@@ -6,7 +6,8 @@
 
 | 文件 | 内容 |
 |---|---|
-| `train.py` | 主入口：DataLoader + 训练循环 + TensorBoard + 每 10 步 evaluate |
+| `train.py` | 训练主入口：DataLoader + 训练循环 + TensorBoard + 每 10 步 evaluate |
+| `eval.py` | **独立评估脚本**：跑基线（`--ckpt` 不传）或某个 checkpoint（`--ckpt path.pt`） |
 | `grpo.py` | 核心算法：`rollout` / `normalize_rewards_per_group` / `update_policy` |
 | `qwen2_model.py` | **手写 Qwen2** Transformer：RoPE、RMSNorm、GQA、KV Cache、SafeTensors 加载、checkpoint_sequential |
 | `countdown_task.py` | 任务定义、prompt 模板、`format_reward` + `answer_reward` |
@@ -17,11 +18,24 @@
 
 ```bash
 # 准备：把 Qwen2.5-3B-Instruct/ 和 Countdown-Tasks-3to4/ 放在本目录下
-uv run python grpo/train.py
+
+# 1. 先跑基线评估（必须放在训练之前，训练会改模型权重）
+uv run python eval.py --model-path ./Qwen2.5-3B-Instruct/ \
+                      --data-path ./Countdown-Tasks-3to4/
+
+# 2. 跑 GRPO 训练
+uv run python train.py
+
+# 3. 训练后评估某个 ckpt
+uv run python eval.py --model-path ./Qwen2.5-3B-Instruct/ \
+                      --data-path ./Countdown-Tasks-3to4/ \
+                      --ckpt ./ckpt/ckpt_000080.pt
 
 # 看训练曲线
-uv run tensorboard --logdir grpo/logs/
+uv run tensorboard --logdir logs/
 ```
+
+云上一键复现见 [`../docs/autodl_guide.md`](../docs/autodl_guide.md)。
 
 ## 关键超参（写在 `train.py:main()`）
 
