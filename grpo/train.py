@@ -43,6 +43,13 @@ def main():
     dtype = torch.bfloat16
     torch.set_default_device(device)
     torch.random.manual_seed(1337)
+
+    # ---- Early stopping 配置 ----
+    best_eval_acc = 0.0
+    no_improve_count = 0
+    PATIENCE = 5  # 连续 5 次评估（=50 步）无新高就停训
+    MAX_STEPS = 300  # 兜底上限，避免无限训
+
     # 批次大小
     BATCH_SIZE = 256
     # 每个批次32个问题
@@ -132,17 +139,29 @@ def main():
             f"平均回答长度: {mean_response_len:.2f}, "
             f"熵: {entropy:.2f}"
         )
-        # 每隔10步评估一次
+        # 每隔10步评估一次 + early stopping 检查
+        early_stop = False
         if step % 10 == 0:
             eval_success_rate = evaluate(
                 model, tokenizer, device, dtype, data_path=str(DATASET_PATH)
             )
-            print(
-                f"\r评估数据集回答正确率: \
-                   {eval_success_rate:.2f}"
-                + " " * 100
-            )
+            print(f"\r评估正确率: {eval_success_rate:.4f}" + " " * 100)
             tb_writer.add_scalar("回答正确率/评估", eval_success_rate, step)
+
+            if eval_success_rate > best_eval_acc:
+                best_eval_acc = eval_success_rate
+                no_improve_count = 0
+                best_ckpt = ckpt_dir / "ckpt_best.pt"
+                torch.save(model.state_dict(), best_ckpt)
+                print(f">>> 新高 {best_eval_acc:.4f}, 保存到 {best_ckpt}")
+            else:
+                no_improve_count += 1
+                print(
+                    f">>> 连续 {no_improve_count}/{PATIENCE} 次未提升, 当前最佳 {best_eval_acc:.4f}"
+                )
+                if no_improve_count >= PATIENCE:
+                    print(f">>> 触发 early stopping, 停在 step {step}")
+                    early_stop = True
 
         tb_writer.add_scalar("损失", loss, step)
         tb_writer.add_scalar("平均奖励", mean_reward, step)
@@ -160,11 +179,16 @@ def main():
             text = html.escape(episode.text)
             tb_writer.add_text(f"text_{i}", f"<pre>{text}</pre>", step)
 
-        # 每隔100步保存模型的检查点
-        if step % 100 == 0:
+        # 每隔 20 步保存一次模型检查点（频率比较密，方便中断后回退）
+        if step % 20 == 0:
             output_file = ckpt_dir / f"ckpt_{step:06d}.pt"
             torch.save(model.state_dict(), output_file)
             print(f"将检查点保存到 {output_file}")
+
+        # Early stopping / 兜底上限
+        if early_stop or step >= MAX_STEPS:
+            print(f">>> 训练结束, 最佳正确率 {best_eval_acc:.4f}")
+            break
 
 
 if __name__ == "__main__":
