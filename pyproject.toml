@@ -1,0 +1,49 @@
+[project]
+name = "rlhf-from-scratch"
+version = "0.1.0"
+description = "从零复现 RLHF 全流程：GPT-2 SFT + RM + PPO，以及 Qwen2.5 + Countdown 的 GRPO 训练（DeepSeek-R1 风格）"
+readme = "README.md"
+requires-python = "==3.12.12"
+dependencies = [
+    "torch>=2.5.1",
+    "transformers>=4.45.0",
+    "datasets>=3.0.0",
+    "tokenizers>=0.20.0",
+    "safetensors>=0.4.5",
+    "tensorboard>=2.18.0",
+    "numpy>=2.0.0",
+    "tqdm>=4.66.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.7.0",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+
+# ===== Ruff: 代码格式化 + lint 一体化 =====
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# E/W: pycodestyle  F: pyflakes  I: isort  UP: pyupgrade  B: flake8-bugbear
+select = ["E", "F", "I", "W", "UP", "B"]
+# E501: 行长由 formatter 处理；E741: 允许在数学公式中使用单字母变量（如 l, I）
+ignore = ["E501", "E741"]
+
+[tool.ruff.lint.per-file-ignores]
+# 模型实现文件常用单字母张量名（B, T, H, D），不强制
+"grpo/qwen2_model.py" = ["E741"]
+"model_notes/*.py" = ["E741"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

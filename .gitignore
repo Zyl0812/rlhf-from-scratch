@@ -1,0 +1,62 @@
+# ===== Python =====
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ===== Virtual env =====
+.venv/
+venv/
+env/
+
+# ===== 模型权重与 checkpoint =====
+*.pt
+*.pth
+*.safetensors
+*.bin
+*.ckpt
+ckpt/
+checkpoints/
+
+# ===== 训练日志 =====
+logs/
+runs/
+wandb/
+tensorboard/
+events.out.tfevents.*
+
+# ===== 数据集 / 大文件 =====
+*.parquet
+*.csv
+*.arrow
+*.jsonl
+
+# 项目特定的数据/模型目录（README 给下载链接）
+gpt2-chinese-cluecorpussmall/
+gpt2-sft/
+Qwen2.5-*/
+Countdown-Tasks-*/
+
+# ===== IDE =====
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== uv / pip =====
+.python-version
+pip-log.txt
+# 注意：uv.lock 应提交到仓库以保证依赖可复现，因此不忽略
+
+# ===== Jupyter =====
+.ipynb_checkpoints/
